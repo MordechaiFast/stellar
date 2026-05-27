@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Twilight Stars</title>
+  
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css" />
+  <script src="keys.js"></script>
+  <script src="api.js"></script>
+  <script src="astroCalc.js"></script>
+  <script src="computations.js"></script>
+</head>
+<body>
+  <h1>Stars Visible Durring Twilight</h1>
+  <main>
+    <section id="form-section">
+      Search by:
+      <form id="input-form">
+        <div class="form-group-row">
+          <div class="form-group">
+            <label for="city">City:</label>
+            <input 
+              type="text" 
+              id="city" 
+              name="city" 
+              placeholder="Enter city name" 
+              required
+            >
+          </div>
+          <button type="submit" class="btn-submit">Find city</button>
+        </div>
+      </form>
+      <form id="coords-form">
+        <div class="form-group-row">
+          <div class="form-group">
+            <label for="lat">Latitude:</label>
+            <input
+              type="number"
+              id="lat"
+              name="lat"
+              inputmode="decimal"
+              min="-90"
+              max="90"
+              step="any"
+              placeholder="e.g. 31.7780"
+            >
+            <label for="lat" class="unit-label">°N</label>
+          </div>
+          <div class="form-group">
+            <label for="lon">Longitude:</label>
+            <input
+              type="number"
+              id="lon"
+              name="lon"
+              inputmode="decimal"
+              min="-180"
+              max="180"
+              step="any"
+              placeholder="e.g. 35.2353"
+            >
+            <label for="lon" class="unit-label">°E</label>
+          </div>
+          <button type="submit" class="btn-submit">Find Location</button>
+        </div>  
+        <div id="current-location" class="form-group">
+          <label for="current-location-btn">or</label>
+          <button type="button" id="current-location-btn" class="btn-submit">Use current location</button>
+        </div>
+      </form>
+      <div id="error" role="alert" aria-live="polite"></div>
+    </section>
+
+    <section id="results" class="results-card" aria-live="polite">
+      <div class="card-left">
+        <div class="city" id="card-city"></div>
+        <span id="card-coords"></span>
+        <div class="form-group">
+          <label for="date"><strong>Date:</strong></label>
+          <input
+            type="date"
+            id="date"
+            name="date"
+            required
+          >
+        </div>
+        <span id="card-date"></span>
+        <span id="card-hebrew-date"></span>
+        <strong>Timezone:</strong> <span id="card-tz"></span>
+        <strong>Current time:</strong> <span id="card-current-time"></span>
+      </div>
+
+      <div class="card-right">
+      <strong>Sunset:</strong> <span id="card-sunset"></span>
+      <strong>Stars visible at:</strong> <span id="card-dusk"></span>
+      <div class="visible-stars">
+        <h3>Visible Stars</h3>
+        <table class="daily-data">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Azimuth</th>
+              <th>Altitude</th>
+            </tr>
+          </thead>
+          <tbody id="visible-stars-body"></tbody>
+        </table>
+      </div>
+        <table class="daily-data" dir="rtl">
+          <thead></thead>
+          <tbody id="zmanim-body">
+          </tbody>
+        </table>
+      </div>
+    </section>
+    
+    <section id="settings">
+      <div class="settings-card">
+        <h2>Settings</h2>
+<div class="form-group">
+  <label for="solar-depression">Solar depression:</label>
+
+  <div class="form-group-row">
+    <input
+      type="number"
+      id="solar-depression"
+      name="solar-depression"
+      min="-6"
+      max="-0.85"
+      step="0.01"
+      value="-3.64"
+      required
+    >
+    <label for="solar-depression" class="unit-label">°</label>
+  </div>
+</div>        
+        <div class="form-group">
+          <label for="atmospheric-extinction">Atmospheric extinction:</label>
+          <input
+            type="number"
+            id="atmospheric-extinction"
+            name="atmospheric-extinction"
+            min="0.01"
+            max="0.6"
+            step="0.01"
+            value="0.25"
+            required
+          >
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+</body>
+</html>
