@@ -378,35 +378,20 @@ function twilightTime(elevation, evening, date, location) {
   }
   return current;
 }
-
-meanStar = (star, jd) => meanStellarPosition(
-    jd, star.ra, star.dec, star.pmRA /1000 / 3600, star.pmDec / 1000 / 3600);
     
-function observedPosition(rightAscension, declination, jd, location) {
-  /**Apparent sidereal time at 0 longitude */
-  const sTime = siderealTime(jd);
-  const hourAngle = sTime - location.long - rightAscension;
-  const azimuth = calcAzimuth(location.lat, hourAngle, declination);
-  const altitude = calcAltitude(location.lat, hourAngle, declination);
+function observedPosition(body, siderealTime, location) {
+  const hourAngle = siderealTime - location.long - body.rightAscension;
+  const azimuth = calcAzimuth(location.lat, hourAngle, body.declination);
+  const altitude = calcAltitude(location.lat, hourAngle, body.declination);
   return { azimuth, altitude };
 }
 
-function isVisible(star, jd, location, atmosphere={}) {
-  const starToday = meanStar(star, jd);
-  const starPos = observedPosition(
-    starToday.rightAscension, starToday.declination, jd, location);
+function isVisible(sunPos, starPos, magnitude, atmosphere={}) {
   if (starPos.altitude < 0)
     return false;
 
-  const sunPos = SunPosition(jd);
-  const sTime = siderealTime(jd);
-  sunPos.HA = sTime - location.long - sunPos.rightAscension;
-  sunPos.azimuth = calcAzimuth(location.lat, sunPos.HA, sunPos.declination);
-  sunPos.altitude = calcAltitude(location.lat, sunPos.HA, sunPos.declination);
-
-  starPos.mag = star.mag + atmosphericExtinction(starPos.altitude, atmosphere.extinction);
-
-  const m = starPos.mag - .25;  // Atmospheric extinction assumed by threshold formula
+  const observedMag = magnitude + atmosphericExtinction(starPos.altitude, atmosphere.atmosphericExtinction);
+  const m = observedMag - .25;  // Atmospheric extinction assumed by threshold formula
   const x = angularSeparation(starPos.azimuth, starPos.altitude,
                               sunPos.azimuth, sunPos.altitude);
   const threshold = (m <= 4.2 ? -2.47 - 1.23 * m : 15.62 - 6.61 * m)

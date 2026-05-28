@@ -6,10 +6,6 @@ let stars = [];
 document.addEventListener('DOMContentLoaded', () => {
   initialize(loadCity(), loadSettings());
 
-  loadStars().catch((err) => {
-    showError(err.message || String(err));
-  });
-
   document.getElementById('input-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     await findCity();
@@ -27,6 +23,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('date').addEventListener('change', () => {
+    if (currentCityData) {
+      displayCard(currentCityData);
+    }
+  });
+
+
+  document.getElementById('list-toggle').addEventListener('click', () => {
+    const nextValue = !getCurrentSettings().showAllStars;
+    setListToggle(nextValue);
+    persistSettings();
     if (currentCityData) {
       displayCard(currentCityData);
     }
@@ -59,7 +65,10 @@ document.addEventListener('DOMContentLoaded', () => {
     )});
   }
 
-  document.getElementById('input-form').dispatchEvent(new Event('submit'));
+
+  loadStars().catch((err) => {
+    showError(err.message || String(err));
+  });
 });
 
 function showError(msg) {
@@ -73,8 +82,8 @@ function clearError() {
 function initialize(city, settings) {
   document.getElementById('city').value = city;
   document.getElementById('date').valueAsDate = new Date(); // default to today
-  document.getElementById('solar-depression').value = settings.solarDepression ?? -3.64;
   document.getElementById('atmospheric-extinction').value = settings.atmosphericExtinction ?? 0.25;
+  setListToggle(settings.showAllStars);
 }
 
 async function loadStars() {
@@ -83,6 +92,7 @@ async function loadStars() {
     throw new Error('Unable to load star catalog');
   }
   stars = await response.json();
+  document.getElementById('input-form').dispatchEvent(new Event('submit'));
 }
 
 function updateCurrentTime(cityData) {
@@ -116,8 +126,8 @@ function loadSettings() {
 
 function getCurrentSettings() {
   return {
-    solarDepression: Number(document.getElementById('solar-depression').value),   
     atmosphericExtinction: Number(document.getElementById('atmospheric-extinction').value),
+    showAllStars: document.getElementById('list-toggle').dataset.mode !== 'compact',
   };
 }
 
@@ -127,6 +137,12 @@ function persistSettings() {
   } catch (err) {
     // localStorage may be unavailable; continue without caching
   }
+}
+
+function setListToggle(showAllStars) {
+  const button = document.getElementById('list-toggle');
+  button.dataset.mode = showAllStars ? 'full' : 'compact';
+  button.textContent = showAllStars ? 'Fewer stars' : 'All stars';
 }
 
 function loadCity() {
@@ -231,22 +247,25 @@ function displayCard(cityData) {
   syncCurrentTime(cityData, dateStr);
 
   document.getElementById('card-sunset').textContent = elevationTimeStamp(dateStr, cityData, -50/60);
-  document.getElementById('card-dusk').textContent = elevationTimeStamp(dateStr, cityData, settings.solarDepression)
 
   const body = document.getElementById('visible-stars-body');
   body.innerHTML = '';
 
-  for (const star of listVisibleStars(dateStr, cityData, stars, settings)) {
+  const visibleList = listVisibleStars(dateStr, cityData, stars, settings);
+  let count = 0;
+  for (const [des, data] of visibleList) {
+    count += 1;
+    if (count == 7 && !settings.showAllStars) break;
+    
     const row = document.createElement('tr');
-
-    const name = `${star.name} ${star.des}`.trim();
-
     row.innerHTML = `
-      <td>${name}</td>
-      <td>${star.azimuth.toFixed(1)}°</td>
-      <td>${star.altitude.toFixed(1)}°</td>
+      <td>${degMin(data.solarDepression)}</td>
+      <td>${currentTimeStr(cityData.timezone, data.time)}</td>
+      <td>${des}</td>
+      <td>${degMin(data.starPos.azimuth + 180)} ${directionStr(data.starPos.azimuth + 180)}</td>
+      <td>${degMin(data.starPos.altitude)}</td>
+      <td>${data.name}</td>
     `;
-
     body.appendChild(row);
   }
 }

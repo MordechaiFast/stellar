@@ -211,7 +211,7 @@ form {
 }
 
 .card-left{
-  flex: 1 1 320px;
+  flex: 1 1 auto;
   min-width: 0;
   display:flex;
   flex-direction:column;
@@ -235,7 +235,7 @@ form {
 }
 
 .card-right{
-  flex: 1 1 320px;
+  flex: 1 1 auto;
   min-width: 0;
   flex-direction:column;
   padding-left:1rem;

@@ -1,5 +1,7 @@
 "use strict"
 
+const TWILIGHT_LIMIT = -8.5;
+
 function fullCityName(cityData) {
   const { name, state, country } = cityData;
   if (country === 'IL') {
@@ -53,6 +55,12 @@ function latStr(latitude) {
   return `${Math.abs(degrees)}°${String(minutes).padStart(2,'0')}'${String(seconds).padStart(2,'0')}"${dir}`;
 }
 
+function degMin(decimal) {
+  const degrees = Math.trunc(decimal);
+  const decimalDegrees = Math.abs(decimal - degrees);
+  const minutes = Math.round(decimalDegrees * 60);
+  return `${degrees}°${String(minutes).padStart(2,'0')}'`;
+}
 function directionStr(deg) {
   // 16-sector compass
   const sectors = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
@@ -157,6 +165,10 @@ function hebrewDate(date) {
   return `${parts[0]} ${parts[1]} ${parts[2]}`;
 }
 
+function roundJulianDay(jd, seconds=1) {
+  const step = seconds / 86400;
+  return Math.round(jd / step) * step;
+}
 
 function JDtoDate(jd) {
   const unixEpochJD = 2440587.5;
@@ -203,31 +215,41 @@ function listVisibleStars(dateStr, locationData, stars, settings={}) {
     long: -locationData.lon
   };
 
-  const dusk = twilightTime(settings.solarDepression, true, date, location);
+  const sunset = twilightTime(-5/6, true, date, location);
+  const dusk = twilightTime(TWILIGHT_LIMIT, true, date, location);
 
-  const visible = [];
-
+  const starMeans = [];
   for (const star of stars) {
-    if (!isVisible(star, dusk, location, {
-      extinction: settings.atmosphericExtinction
-    })) continue;
-
-    const starToday = meanStar(star, dusk);
-
-    const obs = observedPosition(
-      starToday.rightAscension,
-      starToday.declination,
-      dusk,
-      location
-    );
-
-    visible.push({
-      name: star.he,
-      des: star.des,
-      azimuth: obs.azimuth,
-      altitude: obs.altitude
+    const starToday = meanStellarPosition(
+      sunset, star.ra, star.dec, star.pmRA / 1000 / 3600, star.pmDec / 1000 / 3600);
+    starMeans.push({
+        name: star.he,
+        des: star.des,
+        rightAscension: starToday.rightAscension,
+        declination: starToday.declination,
+        mag: star.mag,
     });
   }
-
-  return visible;
+  
+  let time = roundJulianDay(sunset, settings.step || 5);
+  const visibleList = new Map();
+  while (time <= dusk) {
+    const sTime = siderealTime(time);
+    let sunPos = SunPosition(time);
+    sunPos = observedPosition(sunPos, sTime, location);
+    for (const star of starMeans) {
+      const starPos = observedPosition(star, sTime, location);
+      if ( isVisible(sunPos, starPos, star.mag, settings)
+        && !visibleList.has(star.des) ) {
+        visibleList.set(star.des, {
+          solarDepression: sunPos.altitude,     
+          time: JDtoDate(time),
+          starPos,
+          name: star.name,
+        });
+      }
+    }
+    time += 1/86400 * (settings.step || 5);
+  }
+  return visibleList;
 }
