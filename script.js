@@ -1,6 +1,8 @@
 const MIKDASH_LAT = 31.7780, MIKDASH_LON = 35.2353;
 let currentCityData = null;
 let currentTimeTimer = null;
+let heading0 = 0;
+let setHeading = false;
 let stars = [];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -28,6 +30,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  document.getElementById('compass-btn').addEventListener('click', async () => {
+    // iOS 13+
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      const permission =
+        await DeviceOrientationEvent.requestPermission(true);
+      if (permission !== "granted") {
+        showError("Compass not avalible");
+        return;
+      }
+    }
+    setHeading = true;
+    window.addEventListener("deviceorientation", handleOrientation, true);
+  });
+
   document.getElementById('list-toggle').addEventListener('click', () => {
     const nextValue = !getCurrentSettings().showAllStars;
     setListToggle(nextValue);
@@ -36,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
       displayCard(currentCityData);
     }
   });
-
+  
   document.querySelectorAll('#settings input, #settings select').forEach((control) => {
     control.addEventListener('change', () => {
       persistSettings();
@@ -46,13 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  const currentLocationSection = document.getElementById('current-location');
-  const currentLocationButton = document.getElementById('current-location-btn');
-
   if (!navigator.geolocation) {
-    currentLocationSection.hidden = true;
+    document.getElementById('current-location').hidden = true;
   } else {
-    currentLocationButton.addEventListener('click', () => {
+    document.getElementById('current-location-btn').addEventListener('click', () => {
       clearError();
       navigator.geolocation.getCurrentPosition((position) => {
         document.getElementById('lat').value = String(position.coords.latitude);
@@ -85,15 +98,6 @@ function initialize(city, settings) {
   document.querySelector(`input[name="morn-eve"][value="${settings.mornEve ? 'evening' : 'morning'}"]`).checked = true;
   document.getElementById('max-distance').value = String(settings.maxDistance);
   setListToggle(settings.showAllStars);
-}
-
-async function loadStars() {
-  const response = await fetch('stars.json');
-  if (!response.ok) {
-    throw new Error('Unable to load star catalog');
-  }
-  stars = await response.json();
-  document.getElementById('input-form').dispatchEvent(new Event('submit'));
 }
 
 function updateCurrentTime(cityData) {
@@ -238,6 +242,53 @@ async function findLoc() {
   }
 }
 
+function handleOrientation(event) {
+    let absolute = event.absolute;
+    let heading  = event.alpha;
+    let altitude = event.beta;
+    let tack     = event.gamma;
+    // iOS
+    if (typeof event.webkitCompassHeading === "number") {
+      heading = event.webkitCompassHeading;
+    }
+    updateCompass(absolute, heading, altitude, tack);
+}
+
+function updateCompass(absolute, heading, altitude) {
+    if (absolute) {
+      document.getElementById('compass-btn').disabled = true;
+      document.getElementById('compass-fix-box').hidden = true;
+    } else {
+      document.getElementById('compass-btn').textContent = "Reset compass";
+      document.getElementById('compass-fix-box').hidden = false;
+      if (setHeading) {
+        heading0 = heading;
+        if (document.querySelector('input[name="compass-fix"]:checked').value === 'sun') {
+          heading0 += sunsetAzimuth(
+            document.getElementById('date').value,
+            currentCityData
+          );
+        }
+        setHeading = false;
+      }
+      heading = heading0 - heading;
+    }
+    heading += 360;
+    heading %= 360;
+    altitude -= 90;
+
+    document.getElementById('card-orientation').textContent = `${Math.round(heading)}°(${directionStr(heading)}) ${Math.round(altitude)}°`;
+}
+
+async function loadStars() {
+  const response = await fetch('stars.json');
+  if (!response.ok) {
+    throw new Error('Unable to load star catalog');
+  }
+  stars = await response.json();
+  document.getElementById('input-form').dispatchEvent(new Event('submit'));
+}
+
 function displayCard(cityData) {
   const dateStr = document.getElementById('date').value; // YYYY-MM-DD
   const settings = getCurrentSettings();
@@ -251,7 +302,7 @@ function displayCard(cityData) {
   syncCurrentTime(cityData, dateStr);
 
   document.getElementById('sunset-label').textContent = settings.mornEve ? "Sunset" : "Sunrise";
-  document.getElementById('card-sunset').textContent = elevationTimeStamp(dateStr, cityData, -50/60, settings.mornEve);
+  document.getElementById('card-sunset').textContent = twilightAngle(dateStr, cityData, 50/60, settings.mornEve);
 
   const body = document.getElementById('visible-stars-body');
   body.innerHTML = '';

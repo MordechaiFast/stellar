@@ -69,30 +69,6 @@ function directionStr(deg) {
   return sectors[idx];
 }
 
-function d2r(deg) {
-  return deg * Math.PI / 180;
-}
-
-function r2d(rad) {
-  return rad * 180 / Math.PI;
-}
-
-function greatCircleDirection(lat1, lon1, lat2, lon2) {
-  lat1 = d2r(lat1);
-  lon1 = d2r(lon1);
-  lat2 = d2r(lat2);
-  lon2 = d2r(lon2);
-  const dLon = lon2 - lon1;
-  const y = Math.sin(dLon);
-  const x = Math.cos(lat1)*Math.tan(lat2) - Math.sin(lat1)*Math.cos(dLon);
-  let brng = r2d(Math.atan2(y, x));
-  if (brng < 0)
-    brng += 360
-  else if (brng >= 360)
-    brng -= 360;
-  return `${directionStr(brng)} (${brng.toFixed(0)}°)`;
-}
-
 function fullDate(dateStr) {
   const date = new Date(dateStr);
   const dateOptions = {
@@ -166,6 +142,23 @@ function hebrewDate(date) {
   return `${parts[0]} ${parts[1]} ${parts[2]}`;
 }
 
+function sunsetAzimuth(dateStr, locationData) {
+  const dateParts = dateStr.split("-");
+  const date = {
+    year: Number(dateParts[0]),
+    month: Number(dateParts[1]),
+    day: Number(dateParts[2])
+  };
+  const location = {
+    lat: locationData.lat,
+    long: -locationData.lon
+  };
+  const sunset = twilightTime(-5/6, true, date, location);
+  const sTime = siderealTime(sunset);
+  const sunPos = observedPosition(SunPosition(sunset), sTime, location);
+  return sunPos.azimuth + 180;
+}
+
 function roundJulianDay(jd, seconds=1) {
   const step = seconds / 86400;
   return Math.round(jd / step) * step;
@@ -198,10 +191,6 @@ function twilightAngle(dateStr, locationData, decentAngle, evening=false) {
   };
   const time = JDtoDate(twilightTime(-decentAngle, evening, date, location));
   return time.toLocaleTimeString("he", timeSetting);
-}
-
-function elevationTimeStamp(date, location, h, evening=true) {
-  return twilightAngle(date, location, -h, evening);
 }
 
 function todaysStars(jd, stars, maxDistance) {

@@ -90,6 +90,8 @@
         <strong>Timezone:</strong> <span id="card-tz"></span>
         <strong><span id="sunset-label">Sunset</span>:</strong> <span id="card-sunset"></span>
         <strong>Current time:</strong> <span id="card-current-time"></span>
+        <strong>Device orientation:</strong> <span id="card-orientation"></span>
+        <button type="button" id="compass-btn" class="btn-secondary">Use compass</button>
         <button type="button" id="list-toggle" class="btn-secondary">All stars</button>
       </div>
 
@@ -143,6 +145,17 @@
               <span>Morning</span>
             </label>
           </fieldset>
+          <fieldset class="settings-group" id="compass-fix-box">
+            <legend>Compass fixture</legend>
+            <label class="choice-row">
+              <input type="radio" name="compass-fix" id="north" value="north" checked>
+              <span>North</span>
+            </label>
+            <label class="choice-row">
+              <input type="radio" name="compass-fix" id="sun" value="sun">
+              <span>Sunset direction</span>
+            </label>
+          </fieldset>
 
           <div class="form-group">
             <label for="atmospheric-extinction">Atmospheric extinction:</label>
@@ -151,7 +164,7 @@
               id="atmospheric-extinction"
               name="atmospheric-extinction"
               min="0.01"
-              max="0.6"
+              max="1.0"
               step="0.01"
               value="0.7"
               required
