@@ -88,7 +88,7 @@
         <span id="card-date"></span>
         <span id="card-hebrew-date"></span>
         <strong>Timezone:</strong> <span id="card-tz"></span>
-        <strong>Sunset:</strong> <span id="card-sunset"></span>
+        <strong><span id="sunset-label">Sunset</span>:</strong> <span id="card-sunset"></span>
         <strong>Current time:</strong> <span id="card-current-time"></span>
         <button type="button" id="list-toggle" class="btn-secondary">All stars</button>
       </div>
@@ -110,24 +110,66 @@
             <tbody id="visible-stars-body"></tbody>
           </table>
         </div>
+        <div class="close-stars">
+          <h3>Contiguous Stars</h3>
+          <table class="daily-data">
+            <thead>
+              <tr>
+                <th>Solar height</th>
+                <th>Time</th>
+                <th>Des.</th>
+                <th>Des.</th>
+                <th>Des.</th>
+              </tr>
+            </thead>
+            <tbody id="close-stars-body"></tbody>
+          </table>
+        </div>
       </div>
     </section>
     
     <section id="settings">
       <div class="settings-card">
         <h2>Settings</h2>
-        <div class="form-group">
-          <label for="atmospheric-extinction">Atmospheric extinction:</label>
-          <input
-            type="number"
-            id="atmospheric-extinction"
-            name="atmospheric-extinction"
-            min="0.01"
-            max="0.6"
-            step="0.01"
-            value="0.25"
-            required
-          >
+        <div class="settings-grid">
+          <fieldset class="settings-group">
+            <legend>Time of day</legend>
+            <label class="choice-row">
+              <input type="radio" name="morn-eve" id="eve" value="evening" checked>
+              <span>Evening</span>
+            </label>
+            <label class="choice-row">
+              <input type="radio" name="morn-eve" id="morn" value="morning">
+              <span>Morning</span>
+            </label>
+          </fieldset>
+
+          <div class="form-group">
+            <label for="atmospheric-extinction">Atmospheric extinction:</label>
+            <input
+              type="number"
+              id="atmospheric-extinction"
+              name="atmospheric-extinction"
+              min="0.01"
+              max="0.6"
+              step="0.01"
+              value="0.7"
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label for="max-distance">"Contiguous" limit:</label>
+            <input
+              type="number"
+              id="max-distance"
+              name="max-distance"
+              min="1"
+              max="15"
+              step="any"
+              value="7.5"
+              required
+            >
+          </div>
         </div>
       </div>
     </section>

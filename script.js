@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-
   document.getElementById('list-toggle').addEventListener('click', () => {
     const nextValue = !getCurrentSettings().showAllStars;
     setListToggle(nextValue);
@@ -82,7 +81,9 @@ function clearError() {
 function initialize(city, settings) {
   document.getElementById('city').value = city;
   document.getElementById('date').valueAsDate = new Date(); // default to today
-  document.getElementById('atmospheric-extinction').value = settings.atmosphericExtinction ?? 0.25;
+  document.getElementById('atmospheric-extinction').value = settings.atmosphericExtinction ?? 0.7;
+  document.querySelector(`input[name="morn-eve"][value="${settings.mornEve ? 'evening' : 'morning'}"]`).checked = true;
+  document.getElementById('max-distance').value = String(settings.maxDistance);
   setListToggle(settings.showAllStars);
 }
 
@@ -126,8 +127,11 @@ function loadSettings() {
 
 function getCurrentSettings() {
   return {
+    mornEve: document.querySelector('input[name="morn-eve"]:checked').value === 'evening',
     atmosphericExtinction: Number(document.getElementById('atmospheric-extinction').value),
+    maxDistance: Number(document.getElementById('max-distance').value),
     showAllStars: document.getElementById('list-toggle').dataset.mode !== 'compact',
+    step: 5,
   };
 }
 
@@ -246,14 +250,15 @@ function displayCard(cityData) {
   document.getElementById('card-hebrew-date').textContent = hebrewDate(new Date(dateStr));
   syncCurrentTime(cityData, dateStr);
 
-  document.getElementById('card-sunset').textContent = elevationTimeStamp(dateStr, cityData, -50/60);
+  document.getElementById('sunset-label').textContent = settings.mornEve ? "Sunset" : "Sunrise";
+  document.getElementById('card-sunset').textContent = elevationTimeStamp(dateStr, cityData, -50/60, settings.mornEve);
 
   const body = document.getElementById('visible-stars-body');
   body.innerHTML = '';
 
-  const visibleList = listVisibleStars(dateStr, cityData, stars, settings);
-  let count = 0;
-  for (const [des, data] of visibleList) {
+  const result = listVisibleStars(dateStr, cityData, stars, settings);
+  let count = 0;  
+  for (const [des, data] of result.visibleList) {
     count += 1;
     if (count == 7 && !settings.showAllStars) break;
     
@@ -261,11 +266,28 @@ function displayCard(cityData) {
     row.innerHTML = `
       <td>${degMin(data.solarDepression)}</td>
       <td>${currentTimeStr(cityData.timezone, data.time)}</td>
-      <td>${des}</td>
+      <td><span translate="no">${des}</span></td>
       <td>${degMin(data.starPos.azimuth + 180)} ${directionStr(data.starPos.azimuth + 180)}</td>
       <td>${degMin(data.starPos.altitude)}</td>
       <td>${data.name}</td>
     `;
     body.appendChild(row);
+  }
+  // List close stars
+  const body2 = document.getElementById('close-stars-body');
+  body2.innerHTML = '';
+  count = 0;
+  for (const group of result.closeGroups) {
+    count += 1;
+    if (count == 4 && !settings.showAllStars) break;
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${degMin(group.solarDepression)}</td>
+      <td>${currentTimeStr(cityData.timezone, group.time)}</td>
+      <td><span translate="no">${group.stars[0].des}</span></td>
+      <td><span translate="no">${group.stars[1].des}</span></td>
+      <td><span translate="no">${group.stars[2].des}</span></td>
+    `;
+    body2.appendChild(row);
   }
 }

@@ -61,6 +61,7 @@ function degMin(decimal) {
   const minutes = Math.round(decimalDegrees * 60);
   return `${degrees}°${String(minutes).padStart(2,'0')}'`;
 }
+
 function directionStr(deg) {
   // 16-sector compass
   const sectors = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
@@ -87,7 +88,7 @@ function greatCircleDirection(lat1, lon1, lat2, lon2) {
   let brng = r2d(Math.atan2(y, x));
   if (brng < 0)
     brng += 360
-  else if (brng > 360)
+  else if (brng >= 360)
     brng -= 360;
   return `${directionStr(brng)} (${brng.toFixed(0)}°)`;
 }
@@ -203,6 +204,45 @@ function elevationTimeStamp(date, location, h, evening=true) {
   return twilightAngle(date, location, -h, evening);
 }
 
+function todaysStars(jd, stars, maxDistance) {
+  const starMeans = [];
+  for (const star of stars) {
+    const starToday = meanStellarPosition(
+      jd, star.ra, star.dec, star.pmRA / 1000 / 3600, star.pmDec / 1000 / 3600);
+    starMeans.push({
+      name: star.he,
+      des: star.des,
+      rightAscension: starToday.rightAscension,
+      declination: starToday.declination,
+      mag: star.mag,
+    });
+  }
+  starMeans.sort((a, b) => a.declination - b.declination);
+
+  // Precompute nearby pair distances
+  const nearby = new Map();
+  for (let i = 0; i < starMeans.length; i++) {
+    const a = starMeans[i];
+    for (let j = i + 1; j < starMeans.length; j++) {
+      const b = starMeans[j];
+      if (b.declination - a.declination > maxDistance) {
+        break;
+      }
+      const d = angularSeparation(
+        a.rightAscension, a.declination,
+        b.rightAscension, b.declination
+      );
+      if (d <= maxDistance) {
+        if (!nearby.has(i)) nearby.set(i, []);
+        if (!nearby.has(j)) nearby.set(j, []);
+        nearby.get(i).push([j, d]);
+        nearby.get(j).push([i, d]);
+      }
+    }
+  }
+  return { starMeans, nearby };
+}
+
 function listVisibleStars(dateStr, locationData, stars, settings={}) {
   const dateParts = dateStr.split("-");
   const date = {
@@ -214,42 +254,66 @@ function listVisibleStars(dateStr, locationData, stars, settings={}) {
     lat: locationData.lat,
     long: -locationData.lon
   };
+  const sunset = twilightTime(-5/6, settings.mornEve, date, location);
+  const dusk = twilightTime(TWILIGHT_LIMIT, settings.mornEve, date, location);
+  const { starMeans, nearby } = todaysStars(sunset, stars, settings.maxDistance);
 
-  const sunset = twilightTime(-5/6, true, date, location);
-  const dusk = twilightTime(TWILIGHT_LIMIT, true, date, location);
-
-  const starMeans = [];
-  for (const star of stars) {
-    const starToday = meanStellarPosition(
-      sunset, star.ra, star.dec, star.pmRA / 1000 / 3600, star.pmDec / 1000 / 3600);
-    starMeans.push({
-        name: star.he,
-        des: star.des,
-        rightAscension: starToday.rightAscension,
-        declination: starToday.declination,
-        mag: star.mag,
-    });
-  }
-  
-  let time = roundJulianDay(sunset, settings.step || 5);
+  // Visibility search
   const visibleList = new Map();
-  while (time <= dusk) {
+  const visibleIndices = new Set();
+  const closeGroups = [];
+  const groupKeys = new Set();
+ 
+  let time = roundJulianDay(sunset, settings.step);
+  while (settings.mornEve ? time <= dusk : time >= dusk) {
     const sTime = siderealTime(time);
-    let sunPos = SunPosition(time);
-    sunPos = observedPosition(sunPos, sTime, location);
-    for (const star of starMeans) {
+    const sunPos = observedPosition(SunPosition(time), sTime, location);
+
+    for (let i = 0; i < starMeans.length; i++) {
+      if (visibleIndices.has(i)) {
+        continue;
+      }
+
+      const star = starMeans[i];
       const starPos = observedPosition(star, sTime, location);
-      if ( isVisible(sunPos, starPos, star.mag, settings)
-        && !visibleList.has(star.des) ) {
-        visibleList.set(star.des, {
-          solarDepression: sunPos.altitude,     
-          time: JDtoDate(time),
-          starPos,
-          name: star.name,
-        });
+      if (!isVisible(sunPos, starPos, star.mag, settings)) {
+        continue;
+      }
+      visibleIndices.add(i);
+      visibleList.set(star.des, {
+        solarDepression: sunPos.altitude,
+        time: JDtoDate(time),
+        starPos,
+        name: star.name,
+      });
+
+      // Find visible triples including this star
+      const neighbors1 = nearby.get(i) || [];
+      for (const n1 of neighbors1) {
+        const j = n1[0];
+        if (!visibleIndices.has(j)) {
+          continue;
+        }
+        const neighbors2 = nearby.get(j) || [];
+        for (const n2 of neighbors2) {
+          const k = n2[0];
+          if (k === i || !visibleIndices.has(k)) {
+            continue;
+          }
+          const key = [i, j, k].sort().join(",");
+          if (groupKeys.has(key)) {
+            continue;
+          }
+          groupKeys.add(key);
+          closeGroups.push({
+            solarDepression: sunPos.altitude,
+            time: JDtoDate(time),
+            stars: [starMeans[i], starMeans[j], starMeans[k]],
+          });
+        }
       }
     }
-    time += 1/86400 * (settings.step || 5);
+    time += 1 / 86400 * (settings.mornEve ? settings.step : -settings.step);
   }
-  return visibleList;
+  return { visibleList, closeGroups };
 }
