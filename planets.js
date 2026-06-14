@@ -177,17 +177,41 @@ function geocentricFromHeliocentric(helioPlanet, helioEarth) {
   return { lon, lat, r };
 }
 
-// Approximate visual magnitude functions (very coarse)
-function approxMagnitude(planetName, r, rho) {
-  // r = planet-sun distance (AU), rho = planet-earth distance (AU)
-  // For inner planets phase angle matters; we approximate by mean max brightness
+// Approximate visual magnitude functions (phase-based, low precision)
+function approxMagnitude(planetName, r, rho, R, helioLon=0, earthLon=0) {
+  // r = planet-sun distance (AU), rho = planet-earth distance (AU), R = earth-sun distance (AU ~1)
+  // Compute phase angle phi (Sun-Planet-Earth)
+  let cosphi = (r*r + rho*rho - R*R) / (2 * r * rho);
+  if (cosphi > 1) cosphi = 1;
+  if (cosphi < -1) cosphi = -1;
+  const phi = radToDeg(Math.acos(cosphi));
+
+  // Use low-precision empirical formulas (Meeus-style approximations)
+  const rr = r * rho;
+  const logTerm = 5 * Math.log10(Math.max(1e-9, rr));
   switch (planetName) {
-    case 'Mercury': return -0.4; // average bright
-    case 'Venus': return -4.0;
-    case 'Mars': return -1.0;
-    case 'Jupiter': return -2.5;
-    case 'Saturn': return 0.5;
-    default: return 2.0;
+    case 'Mercury':
+      // polynomial in phase angle from empirical fit
+      return -0.42 + logTerm + 0.0380 * phi - 0.000273 * phi * phi + 0.000002 * phi * phi * phi;
+    case 'Venus':
+      return -4.47 + logTerm + 0.0009 * phi + 0.000239 * phi * phi - 0.00000065 * phi * phi * phi;
+    case 'Mars':
+      return -1.52 + logTerm + 0.016 * phi;
+    case 'Jupiter':
+      return -9.40 + logTerm + 0.005 * phi;
+    case 'Saturn':
+      // Include a simple ring-tilt term. Compute approximate ring opening angle B (deg)
+      // using Saturn's obliquity (~26.73 deg) and the longitude difference between
+      // Saturn and Earth (heliocentric longitudes). This is an approximation but
+      // gives a reasonable brightness dependence on ring tilt.
+      const I = 26.73; // Saturn ring plane obliquity
+      const diff = degToRad(helioLon - earthLon);
+      const B = Math.asin(Math.sin(degToRad(I)) * Math.cos(diff));
+      const Bdeg = Math.abs(radToDeg(B));
+      const ringTerm = -2.6 * Math.sin(degToRad(Bdeg));
+      return -8.88 + logTerm + 0.044 * phi + ringTerm;
+    default:
+      return 2.0;
   }
 }
 
@@ -216,7 +240,7 @@ function planetsForJD(JD) {
   for (const [name, helio] of proto) {
     const geo = geocentricFromHeliocentric(helio, earth);
     const eq = eclipticSphericalToRADEC(geo.lon, geo.lat, geo.r, eps);
-    const mag = approxMagnitude(name, helio.r, geo.r);
+    const mag = approxMagnitude(name, helio.r, geo.r, earth.r, helio.lon, earth.lon);
     planets.push({ name: hebrewNames[name], des: name, rightAscension: eq.rightAscension, declination: eq.declination, mag, type: 'planet' });
   }
   return planets;
