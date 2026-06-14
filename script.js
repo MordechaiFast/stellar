@@ -310,7 +310,7 @@ function displayCard(cityData) {
   const result = listVisibleStars(dateStr, cityData, stars, settings);
   let count = 0;  
   for (const [des, data] of result.visibleList) {
-    count += 1;
+    count += (data.type !== 'planet' ? 1 : 0);
     if (count == 7 && !settings.showAllStars) break;
     
     const row = document.createElement('tr');
