@@ -191,6 +191,14 @@ function approxMagnitude(planetName, r, rho) {
   }
 }
 
+const hebrewNames = {
+  'Mercury': 'כוכב',
+  'Venus': 'נוגה',
+  'Mars': 'מאדים',
+  'Jupiter': 'צדק',
+  'Saturn': 'שבתאי'
+};
+
 function planetsForJD(JD) {
   const T = julianCenturiesFromJ2000(JD);
   const eps = meanObliquityEcliptic(T);
@@ -209,7 +217,7 @@ function planetsForJD(JD) {
     const geo = geocentricFromHeliocentric(helio, earth);
     const eq = eclipticSphericalToRADEC(geo.lon, geo.lat, geo.r, eps);
     const mag = approxMagnitude(name, helio.r, geo.r);
-    planets.push({ name, des: name, rightAscension: eq.rightAscension, declination: eq.declination, mag, type: 'planet' });
+    planets.push({ name: hebrewNames[name], des: name, rightAscension: eq.rightAscension, declination: eq.declination, mag, type: 'planet' });
   }
   return planets;
 }

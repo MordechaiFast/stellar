@@ -317,7 +317,7 @@ function displayCard(cityData) {
     row.innerHTML = `
       <td>${degMin(data.solarDepression)}</td>
       <td>${currentTimeStr(cityData.timezone, data.time)}</td>
-      <td><span translate="no">${des}</span></td>
+      <td><span translate="no">${data.type === 'planet' ? '🪐 ' : des}</span></td>
       <td>${degMin(data.starPos.azimuth + 180)} ${directionStr(data.starPos.azimuth + 180)}</td>
       <td>${degMin(data.starPos.altitude)}</td>
       <td>${data.name}</td>
