@@ -232,6 +232,22 @@ function todaysStars(jd, stars, maxDistance) {
   return { starMeans, nearby };
 }
 
+// Generate today's planet positions (adapt planetsForJD -> same shape as starMeans)
+function todaysPlanets(jd) {
+  if (typeof planetsForJD !== 'function') return [];
+  const raw = planetsForJD(jd);
+  const planetMeans = raw.map(p => ({
+    name: p.name,
+    des: p.des || p.name,
+    rightAscension: p.rightAscension,
+    declination: p.declination,
+    mag: p.mag,
+    type: 'planet'
+  }));
+  planetMeans.sort((a,b) => a.declination - b.declination);
+  return planetMeans;
+}
+
 function listVisibleStars(dateStr, locationData, stars, settings={}) {
   const dateParts = dateStr.split("-");
   const date = {
@@ -246,6 +262,7 @@ function listVisibleStars(dateStr, locationData, stars, settings={}) {
   const sunset = twilightTime(-5/6, settings.mornEve, date, location);
   const dusk = twilightTime(TWILIGHT_LIMIT, settings.mornEve, date, location);
   const { starMeans, nearby } = todaysStars(sunset, stars, settings.maxDistance);
+  const planetMeans = todaysPlanets(sunset);
 
   // Visibility search
   const visibleList = new Map();
@@ -274,6 +291,7 @@ function listVisibleStars(dateStr, locationData, stars, settings={}) {
         time: JDtoDate(time),
         starPos,
         name: star.name,
+        type: 'star'
       });
 
       // Find visible triples including this star
@@ -302,6 +320,23 @@ function listVisibleStars(dateStr, locationData, stars, settings={}) {
         }
       }
     }
+
+    // Check planets separately so they don't interfere with star indexing / grouping
+    for (const planet of planetMeans) {
+      const planetPos = observedPosition(planet, sTime, location);
+      if (!isVisible(sunPos, planetPos, planet.mag, settings)) continue;
+      const key = planet.des || planet.name;
+      if (!visibleList.has(key)) {
+        visibleList.set(key, {
+          solarDepression: sunPos.altitude,
+          time: JDtoDate(time),
+          starPos: planetPos,
+          name: planet.name,
+          type: 'planet'
+        });
+      }
+    }
+
     time += 1 / 86400 * (settings.mornEve ? settings.step : -settings.step);
   }
   return { visibleList, closeGroups };
