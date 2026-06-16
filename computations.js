@@ -1,6 +1,6 @@
 "use strict"
 
-const TWILIGHT_LIMIT = -8.5;
+const TWILIGHT_LIMIT = -12;
 
 function fullCityName(cityData) {
   const { name, state, country } = cityData;
@@ -242,16 +242,16 @@ function todaysPlanets(jd) {
     'Saturn': 'שבתאי'
   };
 
-  const planetMeans = planetsForJD(jd);
+  let planetMeans = planetsForJD(jd);
   planetMeans.sort((a,b) => a.declination - b.declination);
-  planetMeans = planetMeans.map( p => {
+  planetMeans = planetMeans.map( p => ({
     name: hebrewNames[p.name],
     des: p.name,
     rightAscension: p.rightAscension,
     declination: p.declination,
     mag: p.mag,
     type: 'planet',
-  });
+  }));
   return planetMeans;
 }
 
