@@ -234,8 +234,24 @@ function todaysStars(jd, stars, maxDistance) {
 
 // Generate today's planet positions (adapt planetsForJD -> same shape as starMeans)
 function todaysPlanets(jd) {
+  const hebrewNames = {
+    'Mercury': 'כוכב',
+    'Venus': 'נוגה',
+    'Mars': 'מאדים',
+    'Jupiter': 'צדק',
+    'Saturn': 'שבתאי'
+  };
+
   const planetMeans = planetsForJD(jd);
   planetMeans.sort((a,b) => a.declination - b.declination);
+  planetMeans = planetMeans.map( p => {
+    name: hebrewNames[p.name],
+    des: p.name,
+    rightAscension: p.rightAscension,
+    declination: p.declination,
+    mag: p.mag,
+    type: 'planet',
+  });
   return planetMeans;
 }
 
