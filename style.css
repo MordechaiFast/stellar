@@ -304,6 +304,9 @@ form {
   gap: 1rem;
 }
 
+.settings-grid .form-group.full-width {
+  grid-column: 1 / -1;
+}
 .settings-group{
   margin: 0;
   padding: 0.85rem 1rem 1rem;
