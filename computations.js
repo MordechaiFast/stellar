@@ -56,10 +56,13 @@ function latStr(latitude) {
 }
 
 function degMin(decimal) {
-  const degrees = Math.trunc(decimal);
+  let degrees = Math.trunc(decimal);
+  const sign = Math.sign(decimal);
   const decimalDegrees = Math.abs(decimal - degrees);
-  const minutes = Math.round(decimalDegrees * 60);
-  return `${degrees}°${String(minutes).padStart(2,'0')}'`;
+  degrees = Math.abs(degrees);
+  let minutes = Math.round(decimalDegrees * 60);
+  if (minutes == 60) { degrees++; minutes = 0; }
+  return `${sign == -1 ? '-' : ''}${degrees}°${String(minutes).padStart(2,'0')}'`;
 }
 
 function directionStr(deg) {
@@ -137,9 +140,15 @@ function hebrewNumber(num) {
 function hebrewDate(date) {
   const dateStr = Intl.DateTimeFormat("he", {calendar: "hebrew"}).format(date);
   const parts = dateStr.split(" ");
-  parts[0] = hebrewNumber(parts[0]);
-  parts[2] = hebrewNumber(parts[2]);
-  return `${parts[0]} ${parts[1]} ${parts[2]}`;
+  if (parts.length == 3) {
+    parts[0] = hebrewNumber(parts[0]);
+    parts[2] = hebrewNumber(parts[2]);
+    return `${parts[0]} ${parts[1]} ${parts[2]}`;
+  } else {
+    parts[0] = hebrewNumber(parts[0]);
+    parts[3] = hebrewNumber(parts[3]);
+    return `${parts[0]} ${parts[1]} ${parts[2]} ${parts[3]}`;
+  }
 }
 
 function sunsetAzimuth(dateStr, locationData) {
