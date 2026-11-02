@@ -7,7 +7,7 @@
    heliocentric solver to avoid repeating the same algorithm for each planet.
 
    Exports global function planetsForJD(JD) -> array of planets:
-     { name, des, rightAscension, declination, mag }
+     { name, rightAscension, declination, mag }
 
    NOTE: This file depends on helper functions in astroCalc.js (degToRad, radToDeg).
 */
@@ -27,37 +27,16 @@ function normalizeDeg(d) {
   return d;
 }
 
-// Convert ecliptic spherical (lon, lat, r) -> equatorial RA/Dec (degrees)
-function eclipticSphericalToRADEC(lonDeg, latDeg, r, epsDeg) {
-  const lon = degToRad(lonDeg);
-  const lat = degToRad(latDeg);
-  const eps = degToRad(epsDeg);
-
-  // geocentric ecliptic rectangular coords
-  const x = r * Math.cos(lat) * Math.cos(lon);
-  const y = r * Math.cos(lat) * Math.sin(lon);
-  const z = r * Math.sin(lat);
-
-  // rotate by obliquity to equatorial coords
-  const xe = x;
-  const ye = y * Math.cos(eps) - z * Math.sin(eps);
-  const ze = y * Math.sin(eps) + z * Math.cos(eps);
-
-  let RA = Math.atan2(ye, xe);
-  if (RA < 0) RA += 2 * Math.PI;
-  const Dec = Math.atan2(ze, Math.sqrt(xe*xe + ye*ye));
-  return { rightAscension: radToDeg(RA), declination: radToDeg(Dec) };
-}
-
 // Table of mean orbital element parameters for each body
 // Fields: id, L0 (deg), Lrate (deg per Julian century), a (AU), e, wBar (deg)
+// Source: Astromical Algorithms p. 212-215 
 const ORBITAL_PARAMS = [
-  { id: 'Mercury', L0: 252.250906, Lrate: 149472.6746358, a: 0.38709927, e: 0.20563593, wBar: 77.45611904 },
-  { id: 'Venus',   L0: 181.979801, Lrate: 58517.8156760,    a: 0.72333566, e: 0.00677672, wBar: 131.60246718 },
-  { id: 'Earth',   L0: 100.466457, Lrate: 36000.76982779,   a: 1.000001018, e: 0.01670862, wBar: 102.937348 },
-  { id: 'Mars',    L0: 355.433275, Lrate: 19140.2993313,    a: 1.52367934,  e: 0.09340062, wBar: 336.060234 },
-  { id: 'Jupiter', L0: 34.351484,  Lrate: 3034.9056746,     a: 5.202604,    e: 0.04849485, wBar: 14.331207 },
-  { id: 'Saturn',  L0: 50.077471,  Lrate: 1223.5112712,     a: 9.582017,    e: 0.05554814, wBar: 93.057237 }
+  { id: 'Mercury', L0: 252.250906, Lrate: 149472.6746358, a: 0.38709927,  e: 0.20563593, wBar: 77.45611904 },
+  { id: 'Venus',   L0: 181.979801, Lrate: 58517.8156760,  a: 0.72333566,  e: 0.00677672, wBar: 131.60246718 },
+  { id: 'Earth',   L0: 100.466457, Lrate: 36000.76982779, a: 1.000001018, e: 0.01670862, wBar: 102.937348 },
+  { id: 'Mars',    L0: 355.433275, Lrate: 19140.2993313,  a: 1.52367934,  e: 0.09340062, wBar: 336.060234 },
+  { id: 'Jupiter', L0: 34.351484,  Lrate: 3034.9056746,   a: 5.202604,    e: 0.04849485, wBar: 14.331207 },
+  { id: 'Saturn',  L0: 50.077471,  Lrate: 1223.5112712,   a: 9.582017,    e: 0.05554814, wBar: 93.057237 }
 ];
 
 // Compute heliocentric spherical coordinates for a single body (by id)
@@ -79,6 +58,7 @@ function heliocentric(T, id) {
   return { lon, lat, r, L, M };
 }
 
+// Source: Astromical Algorithms p. 223-224
 function geocentricFromHeliocentric(helioPlanet, helioEarth) {
   // Convert heliocentric spherical -> rectangular and compute geocentric spherical
   const lonP = degToRad(helioPlanet.lon);
@@ -103,31 +83,51 @@ function geocentricFromHeliocentric(helioPlanet, helioEarth) {
   // convert back to spherical ecliptic
   const r = Math.sqrt(xg*xg + yg*yg + zg*zg);
   const lon = normalizeDeg(radToDeg(Math.atan2(yg, xg)));
-  const lat = radToDeg(Math.asin(zg / r));
+  const lat = radToDeg(Math.asin(zg / Math.sqrt(xg*xg + yg*yg)));
   return { lon, lat, r };
 }
 
-// Approximate visual magnitude functions (phase-based, low precision)
-function approxMagnitude(planetName, r, rho, R, helioLon=0, earthLon=0) {
-  // r = planet-sun distance (AU), rho = planet-earth distance (AU), R = earth-sun distance (AU ~1)
-  // Compute phase angle phi (Sun-Planet-Earth)
-  let cosphi = (r*r + rho*rho - R*R) / (2 * r * rho);
-  if (cosphi > 1) cosphi = 1;
-  if (cosphi < -1) cosphi = -1;
-  const phi = radToDeg(Math.acos(cosphi));
+// Convert ecliptic spherical (lon, lat, r) -> equatorial RA/Dec (degrees)
+function eclipticSphericalToRADEC(lonDeg, latDeg, r, epsDeg) {
+  const lon = degToRad(lonDeg);
+  const lat = degToRad(latDeg);
+  const eps = degToRad(epsDeg);
 
-  // Use low-precision empirical formulas (Meeus-style approximations)
-  const rr = r * rho;
-  const logTerm = 5 * Math.log10(Math.max(1e-9, rr));
+  // geocentric ecliptic rectangular coords
+  const x = r * Math.cos(lat) * Math.cos(lon);
+  const y = r * Math.cos(lat) * Math.sin(lon);
+  const z = r * Math.sin(lat);
+
+  // rotate by obliquity to equatorial coords
+  const xe = x;
+  const ye = y * Math.cos(eps) - z * Math.sin(eps);
+  const ze = y * Math.sin(eps) + z * Math.cos(eps);
+
+  let RA = Math.atan2(ye, xe);
+  if (RA < 0) RA += 2 * Math.PI;
+  const Dec = Math.atan2(ze, Math.sqrt(xe*xe + ye*ye));
+  return { rightAscension: radToDeg(RA), declination: radToDeg(Dec) };
+}
+
+// Source: Astronomical Algorithms p. 283-286, 
+function approxMagnitude(planetName, r, Delta, R, helioLon=0, earthLon=0) {
+  // r = planet-sun distance (AU), Delta = planet-earth distance (AU), R = earth-sun distance (AU ~1)
+  // Compute phase angle i (Sun-Planet-Earth)
+  let cosi = (r*r + Delta*Delta - R*R) / (2 * r * Delta);
+  if (cosi > 1) cosi = 1;
+  if (cosi < -1) cosi = -1;
+  const i = radToDeg(Math.acos(cosi));
+
+  const logTerm = 5 * Math.log10(r * Delta);
   switch (planetName) {
     case 'Mercury':
-      return -0.42 + logTerm + 0.0380 * phi - 0.000273 * phi * phi + 0.000002 * phi * phi * phi;
+      return -0.42 + logTerm + 0.0380 * i - 0.000273 * i * i + 0.000002 * i * i * i;
     case 'Venus':
-      return -4.47 + logTerm + 0.0009 * phi + 0.000239 * phi * phi - 0.00000065 * phi * phi * phi;
+      return -4.47 + logTerm + 0.0009 * i + 0.000239 * i * i - 0.00000065 * i * i * i;
     case 'Mars':
-      return -1.52 + logTerm + 0.016 * phi;
+      return -1.52 + logTerm + 0.016 * i;
     case 'Jupiter':
-      return -9.40 + logTerm + 0.005 * phi;
+      return -9.40 + logTerm + 0.005 * i;
     case 'Saturn':
       // Include a simple ring-tilt term. Compute approximate ring opening angle B (radians)
       // using Saturn's obliquity (~26.73 deg) and the longitude difference between
@@ -136,8 +136,8 @@ function approxMagnitude(planetName, r, rho, R, helioLon=0, earthLon=0) {
       const I = degToRad(26.73); // Saturn ring plane obliquity in radians
       const diff = degToRad(helioLon - earthLon);
       const B = Math.asin(Math.sin(I) * Math.cos(diff)); // radians
-      const ringTerm = -2.6 * Math.sin(Math.abs(B));
-      return -8.88 + logTerm + 0.044 * phi + ringTerm;
+      const ringTerm = -2.60 * Math.sin(Math.abs(B)) + 1.25 * Math.sin(B)**2;
+      return -8.88 + logTerm + 0.044 * i + ringTerm;
     default:
       return 2.0;
   }
@@ -157,7 +157,7 @@ function planetsForJD(JD) {
     const geo = geocentricFromHeliocentric(hel, earthHelio);
     const eq = eclipticSphericalToRADEC(geo.lon, geo.lat, geo.r, eps);
     const mag = approxMagnitude(p.id, hel.r, geo.r, earthHelio.r, hel.lon, earthHelio.lon);
-    planets.push({ name: p.id, des: p.id, rightAscension: eq.rightAscension, declination: eq.declination, mag });
+    planets.push({ name: p.id, rightAscension: eq.rightAscension, declination: eq.declination, mag });
   }
   return planets;
 }
