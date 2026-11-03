@@ -17,8 +17,11 @@ function julianCenturiesFromJ2000(JD) {
 }
 
 function meanObliquityEcliptic(T) {
-  // Mean obliquity in degrees (approximation)
-  return 23.439291 - 0.0130042 * T;
+  // Mean obliquity in degrees
+  // Source: Astromical Algorithms p. 147
+  return 23 + 26/60 + (
+    21.448 - T*(46.8150 + T*(0.00059 - T*(0.001813)))
+  )/3600;
 }
 
 function normalizeDeg(d) {
@@ -28,19 +31,22 @@ function normalizeDeg(d) {
 }
 
 // Table of mean orbital element parameters for each body
-// Fields: id, L0 (deg), Lrate (deg per Julian century), a (AU), e, wBar (deg)
+// Fields: id,
+//         L0 (deg, longitude at epoch J2000.0),
+//         Lrate (deg per Julian century), a (AU), e, wBar (deg)
 // Source: Astromical Algorithms p. 212-215 
 const ORBITAL_PARAMS = [
-  { id: 'Mercury', L0: 252.250906, Lrate: 149472.6746358, a: 0.38709927,  e: 0.20563593, wBar: 77.45611904 },
-  { id: 'Venus',   L0: 181.979801, Lrate: 58517.8156760,  a: 0.72333566,  e: 0.00677672, wBar: 131.60246718 },
-  { id: 'Earth',   L0: 100.466457, Lrate: 36000.76982779, a: 1.000001018, e: 0.01670862, wBar: 102.937348 },
-  { id: 'Mars',    L0: 355.433275, Lrate: 19140.2993313,  a: 1.52367934,  e: 0.09340062, wBar: 336.060234 },
-  { id: 'Jupiter', L0: 34.351484,  Lrate: 3034.9056746,   a: 5.202604,    e: 0.04849485, wBar: 14.331207 },
-  { id: 'Saturn',  L0: 50.077471,  Lrate: 1223.5112712,   a: 9.582017,    e: 0.05554814, wBar: 93.057237 }
+  { id: 'Mercury', L0: 252.250906, Lrate: 149474.0722491, a: 0.387098310, e: 0.20563175, wBar:  77.456119 },
+  { id: 'Venus',   L0: 181.979801, Lrate:  58519.2130302, a: 0.723329820, e: 0.00677192, wBar: 131.563703 },
+  { id: 'Earth',   L0: 100.466457, Lrate:  36000.7698278, a: 1.000001018, e: 0.01670863, wBar: 102.937348 },
+  { id: 'Mars',    L0: 355.433000, Lrate:  19141.6964471, a: 1.523679342, e: 0.09340065, wBar: 336.060234 },
+  { id: 'Jupiter', L0:  34.351519, Lrate:   3036.3027748, a: 5.202603209, e: 0.04849793, wBar:  14.331207 },
+  { id: 'Saturn',  L0:  50.077444, Lrate:   1223.5110686, a: 9.554909192, e: 0.05554814, wBar:  93.057237 }
 ];
 
 // Compute heliocentric spherical coordinates for a single body (by id)
 // Returns { lon, lat, r, L, M }
+// Source: Astromical Algorithms p. 209-211
 function heliocentric(T, id) {
   const p = ORBITAL_PARAMS.find(x => x.id === id);
   if (!p) throw new Error(`Unknown body id: ${id}`);
@@ -58,7 +64,7 @@ function heliocentric(T, id) {
   return { lon, lat, r, L, M };
 }
 
-// Source: Astromical Algorithms p. 223-224
+// Source: Astromical Algorithms p. 223
 function geocentricFromHeliocentric(helioPlanet, helioEarth) {
   // Convert heliocentric spherical -> rectangular and compute geocentric spherical
   const lonP = degToRad(helioPlanet.lon);
@@ -83,7 +89,7 @@ function geocentricFromHeliocentric(helioPlanet, helioEarth) {
   // convert back to spherical ecliptic
   const r = Math.sqrt(xg*xg + yg*yg + zg*zg);
   const lon = normalizeDeg(radToDeg(Math.atan2(yg, xg)));
-  const lat = radToDeg(Math.asin(zg / Math.sqrt(xg*xg + yg*yg)));
+  const lat = radToDeg(Math.atan2(zg, Math.sqrt(xg*xg + yg*yg)));
   return { lon, lat, r };
 }
 

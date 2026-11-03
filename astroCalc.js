@@ -32,7 +32,7 @@ function calcJD(year, month, day) {
  * @param {number} JulianDay
  * @returns {object} declination, rightAscension, equationOfTime in degrees
  * 
- * Source: "Astronomical Algorithms" by Jean Meeus, 1998, p. 163-165, 185
+ * Source: "Astronomical Algorithms" by Jean Meeus, 1998, p. 147, 163-165, 185
  ***********************************************************************/
 function SunPosition(JulianDay) {
   /**Centuries since the J2000.0 epoch */
@@ -67,17 +67,17 @@ function SunPosition(JulianDay) {
           + sin2M * (0.019993 - 0.000101 * T)
           + sin3M * 0.000289;
 	
-  /**True longitude of the sun */
+  /**True longitude of the Sun */
   const O = L0 + C;
 	
-  /**Apparent longitude of the sun */
+  /**Apparent longitude of the Sun */
   let lambda = O - 0.00569 - 0.00478 * Math.sin(omega);
   lambda = degToRad(lambda);
 	
-  /**Declination of the sun */
+  /**Apparent declination of the Sun */
   const delta = Math.asin(Math.sin(epsilon) * Math.sin(lambda));
 	
-  /**Sun's right ascension */
+  /**Apparent right ascension of the Sun*/
   const alpha = Math.atan2(
     Math.cos(epsilon) * Math.sin(lambda),
     Math.cos(lambda)
